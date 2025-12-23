@@ -14,18 +14,23 @@ from .serializers import LotterySerializer
 class LotteryViewSet(viewsets.ModelViewSet):
     queryset = Lottery.objects.all()
     serializer_class = LotterySerializer
-    parser_classes = (MultiPartParser, FormParser) 
+    parser_classes = (MultiPartParser, FormParser)
 
     def create(self, request, *args, **kwargs):
-        print("Incoming request data:", request.data)  # Debug: see what client sends
+        print("DEBUG: Incoming data:", request.data)
         serializer = self.get_serializer(data=request.data)
         
-        if serializer.is_valid():
-            print("Serializer is valid")
-            lottery = serializer.save()
+        if not serializer.is_valid():
+            print("Serializer errors:", serializer.errors)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            # Email only if provided
-            if lottery.email:
+        # 1. Save to Database first
+        lottery = serializer.save()
+        print(f"Record created with ID: {lottery.id}")
+
+        # 2. Attempt Email (wrapped in try/except)
+        if lottery.email:
+            try:
                 subject = "Таны сугалааны сертификат"
                 message = render_to_string("emails/lottery_certificate.html", {
                     "name": lottery.buten_ner,
@@ -39,23 +44,13 @@ class LotteryViewSet(viewsets.ModelViewSet):
                     to=[lottery.email],
                 )
                 email.content_subtype = "html"
-                email.send()
+                
+                # Note: This is still synchronous. 
+                # If it's slow, your Flutter app might timeout.
+                email.send(fail_silently=False) 
                 print("Email sent successfully")
-            
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        else:
-            print("Serializer errors:", serializer.errors)  # << Important
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    def dispatch(self, request, *args, **kwargs):
-        # 1. Print the Content-Type header specifically
-        print(f"DEBUG: Content-Type Header: {request.META.get('CONTENT_TYPE')}")
+            except Exception as e:
+                print(f"EMAIL ERROR: {str(e)}")
+                # We don't return 400 because the record WAS created successfully.
         
-        # 2. Print the Raw Body length to see if data is actually arriving
-        print(f"DEBUG: Request Method: {request.method}")
-        
-        return super().dispatch(request, *args, **kwargs)
-
-    def create(self, request, *args, **kwargs):
-        # This will only print if the Parser succeeds
-        print("DEBUG: Parser success! Data:", request.data)
-        return super().create(request, *args, **kwargs)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
