@@ -51,9 +51,14 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'myapp',
+    'corsheaders',
+    'rest_framework',
+
+
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -85,6 +90,19 @@ TEMPLATES = [
         },
     },
 ]
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
+
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://talkh-chikher.store/',
+    'http://talkh-chikher.store/',
+    'https://www.talkh-chikher.store/',
+    'http://wwww.talkh-chikher.store/',
+    'https://ciher.store/',
+    'http://ciher.store/',
+]
+
 
 WSGI_APPLICATION = 'myproject.wsgi.application'
 
